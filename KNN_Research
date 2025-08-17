@@ -1,0 +1,55 @@
+import pickle
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import joblib  # for saving the best model
+
+# Load data
+data_file = "C:/Users/Omar/Downloads/combined_scattering_data.pkl"
+with open(data_file, "rb") as f:
+    df = pickle.load(f)
+
+# Extract features and labels
+X = np.array([np.array(h) for h in df['scattering_pattern']])
+y = df['particle_type'].map({'plastic': 0, 'colloid': 1}).values  # 0 = plastic, 1 = colloid
+
+# Flatten each heatmap into 1D vector for sklearn
+X_flat = X.reshape(X.shape[0], -1)
+
+# Define CV
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+best_model = None
+best_score = -1
+best_y_true = None
+best_y_pred = None
+
+# Try each fold
+for fold_idx, (train_idx, test_idx) in enumerate(skf.split(X_flat, y), 1):
+    X_train, X_test = X_flat[train_idx], X_flat[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+
+    # Train KNN
+    knn = KNeighborsClassifier(n_neighbors=4, metric="euclidean")
+    knn.fit(X_train, y_train)
+
+    # Validate
+    y_pred = knn.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    print(f"Fold {fold_idx} accuracy: {acc:.4f}")
+
+    # Keep best
+    if acc > best_score:
+        best_score = acc
+        best_model = knn
+        best_y_true = y_test
+        best_y_pred = y_pred
+
+# Save best model
+joblib.dump(best_model, "best_knn_model.pkl")
+print(f"\nBest fold accuracy: {best_score:.4f}")
+print("\nClassification Report (Best Fold):")
+print(classification_report(best_y_true, best_y_pred, target_names=["Plastic", "Colloid"]))
+print("Confusion Matrix:")
+print(confusion_matrix(best_y_true, best_y_pred))
