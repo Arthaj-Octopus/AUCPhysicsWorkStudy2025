@@ -1,4 +1,3 @@
-//SALMA
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -244,4 +243,5 @@ plt.title("Accuracy over Epochs")
 
 plt.tight_layout()
 plt.savefig('training_results.png')
+
 plt.show()
